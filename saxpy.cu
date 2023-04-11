@@ -1,85 +1,42 @@
+#include "time_invocation.hpp"
 #include <thrust/device_vector.h>
 #include <thrust/transform.h>
-#include <thrust/system/cuda/execution_policy.h>
-#include <typeinfo>
-#include "time_invocation_cuda.hpp"
-#include "utility.hpp"
-#include <functional>
-
-template<class Vector>
-struct saxpy_functor
-{
-  typename Vector::iterator first1, last1, first2, result;
-
-  __host__ __device__
-  saxpy_functor(typename Vector::iterator first1_,
-                typename Vector::iterator last1_,
-                typename Vector::iterator first2_,
-                typename Vector::iterator result_)
-    : first1(first1_), last1(last1_),
-      first2(first2_),
-      result(result_)
-  {}
-
-  using value_type = typename Vector::value_type;
-
-  struct f
-  {
-    value_type a;
-
-    __host__ __device__
-    value_type operator()(const value_type& x, const value_type& y)
-    {
-      return a * x + y;
-    }
-  };
-
-  __host__ __device__
-  void operator()()
-  {
-    thrust::transform(thrust::cuda::par, first1, last1, first2, result, f());
-  }
-};
-
-template<class Vector>
-saxpy_functor<Vector> make_saxpy_functor(size_t n, Vector& vec1, Vector& vec2, Vector& vec3)
-{
-  return saxpy_functor<Vector>(vec1.begin(), vec1.begin() + n,
-                               vec2.begin(),
-                               vec3.begin());
-}
 
 
 template<class T>
-void time(size_t n, size_t step)
+struct saxpy_functor
+{
+  T a;
+
+  __host__ __device__
+  T operator()(const T& x, const T& y) const
+  {
+    return a * x + y;
+  }
+};
+
+
+template<class T>
+double time(size_t n)
 {
   thrust::device_vector<T> vec1(n);
   thrust::device_vector<T> vec2(n);
   thrust::device_vector<T> vec3(n);
 
-  std::cout << "data size, ms" << std::endl;
-
-  for(size_t m = 0; m <= n; m += step)
+  auto us = time_invocation_in_microseconds(100, [&]
   {
-    auto f = make_saxpy_functor(m, vec1, vec2, vec3);
+    thrust::transform(vec1.begin(), vec1.end(), vec2.begin(), vec3.begin(), saxpy_functor<T>(13));
 
-    double ms = 1000000;
+    cudaDeviceSynchronize();
+  });
 
-    try
-    {
-      ms = time_function(f, 1);
-    }
-    catch(...)
-    {
-    }
-
-    std::cout << m << ", " << ms << std::endl;
-  }
+  return static_cast<double>(us) / 1000000;
 }
 
 
 int main(int argc, char** argv)
 {
+  double (*call_me)(size_t) = time<int>;
   std::string type = "int";
 
   if(argc >= 2)
@@ -87,42 +44,42 @@ int main(int argc, char** argv)
     type = argv[1];
   }
 
-  std::function<void(size_t,size_t)> call_me = time<int>;
-
-  if(type == "int")
-  {
-    call_me = time<int>;
-  }
-  else if(type == "float")
-  {
-    call_me = time<float>;
-  }
-  else if(type == "int64")
-  {
-    call_me = time<long>;
-  }
-  else if(type == "double")
-  {
-    call_me = time<double>;
-  }
-
-  size_t n = 16 << 20;
+  size_t n = 1 << 20;
 
   if(argc >= 3)
   {
     n = atoi(argv[2]);
   }
 
-  size_t step = 5000;
-
-  if(argc >= 4)
+  if(type == "int")
   {
-    step = atoi(argv[3]);
+    call_me = time<int>;
+  }
+  else if(type == "long")
+  {
+    call_me = time<uint64_t>;
+  }
+  else if(type == "float")
+  {
+    call_me = time<float>;
+  }
+  else if(type == "double")
+  {
+    call_me = time<double>;
+  }
+  else
+  {
+    throw std::runtime_error("Unrecognized type");
   }
 
-  std::cout << type << std::endl;
-  time<int>(n, step);
-  std::cout << std::endl;
+  std::clog << "T: " << type << std::endl;
+  std::clog << "n: " << n << std::endl;
+
+  double seconds = call_me(n);
+
+  std::clog << "s: " << seconds << std::endl;
+
+  std::cout << seconds;
 
   return 0;
 }

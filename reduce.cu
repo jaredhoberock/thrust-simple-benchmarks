@@ -1,41 +1,19 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
-#include <thrust/system/cuda/execution_policy.h>
-#include <typeinfo>
-#include "time_invocation_cuda.hpp"
-#include "utility.hpp"
-
-template<class Vector>
-struct reduce_functor
-{
-  typename Vector::iterator first, last;
-
-  __host__ __device__
-  reduce_functor(Vector& vec)
-    : first(vec.begin()), last(vec.end())
-  {}
-
-  __host__ __device__
-  void operator()()
-  {
-    thrust::reduce(thrust::cuda::par, first, last);
-  }
-};
-
-template<class Vector>
-reduce_functor<Vector> make_reduce_functor(Vector& vec)
-{
-  return reduce_functor<Vector>(vec);
-}
+#include "time_invocation.hpp"
 
 template<class T>
 double time(size_t n)
 {
   thrust::device_vector<T> vec(n);
 
-  auto f = make_reduce_functor(vec);
-  
-  return time_function(f);
+  auto us = time_invocation_in_microseconds(100, [&]
+  {
+    thrust::reduce(vec.begin(), vec.end());
+    cudaDeviceSynchronize();
+  });
+
+  return static_cast<double>(us) / 1000000;
 }
 
 int main(int argc, char** argv)
@@ -57,7 +35,7 @@ int main(int argc, char** argv)
 
   if(type == "int")
   {
-    call_me = time<double>;
+    call_me = time<int>;
   }
   else if(type == "long")
   {
@@ -79,11 +57,11 @@ int main(int argc, char** argv)
   std::clog << "T: " << type << std::endl;
   std::clog << "n: " << n << std::endl;
 
-  auto ms = call_me(n);
+  double seconds = call_me(n);
 
-  std::clog << "ms: " << ms << std::endl;
+  std::clog << "s: " << seconds << std::endl;
 
-  std::cout << ms;
+  std::cout << seconds;
 
   return 0;
 }

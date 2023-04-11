@@ -2,10 +2,8 @@
 #include <thrust/merge.h>
 #include <thrust/sort.h>
 #include <thrust/tabulate.h>
-#include <thrust/system/cuda/execution_policy.h>
 #include <typeinfo>
-#include "time_invocation_cuda.hpp"
-#include "utility.hpp"
+#include "time_invocation.hpp"
 
 template<class Vector>
 struct merge_functor
@@ -74,9 +72,12 @@ double time(size_t n)
   thrust::sort(vec1.begin(), vec1.end());
   thrust::sort(vec2.begin(), vec2.end());
 
-  auto f = make_merge_functor(vec1, vec2, vec3);
-  
-  return time_function(f);
+  size_t us = time_invocation_in_microseconds(100, [&]
+  {
+    thrust::merge(vec1.begin(), vec1.end(), vec2.begin(), vec2.begin(), vec3.begin());
+  });
+
+  return static_cast<double>(us) / 1000000;
 }
 
 int main(int argc, char** argv)
@@ -98,7 +99,7 @@ int main(int argc, char** argv)
 
   if(type == "int")
   {
-    call_me = time<double>;
+    call_me = time<int>;
   }
   else if(type == "long")
   {
@@ -120,19 +121,11 @@ int main(int argc, char** argv)
   std::clog << "T: " << type << std::endl;
   std::clog << "n: " << n << std::endl;
 
-  double ms = 1000000;
+  double seconds = call_me(n);
 
-  try
-  {
-    ms = call_me(n);
-  }
-  catch(...)
-  {
-  }
+  std::clog << "s: " << seconds << std::endl;
 
-  std::clog << "ms: " << ms << std::endl;
-
-  std::cout << ms;
+  std::cout << seconds;
 
   return 0;
 }

@@ -1,41 +1,27 @@
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
-#include <thrust/system/cuda/execution_policy.h>
-#include <typeinfo>
-#include "time_invocation_cuda.hpp"
-#include "utility.hpp"
-
-template<class Vector>
-struct radix_sort_functor
-{
-  typename Vector::iterator first, last;
-
-  __host__ __device__
-  radix_sort_functor(Vector& vec)
-    : first(vec.begin()), last(vec.end())
-  {}
-
-  __host__ __device__
-  void operator()()
-  {
-    thrust::stable_sort(thrust::cuda::par, first, last);
-  }
-};
-
-template<class Vector>
-radix_sort_functor<Vector> make_radix_sort_functor(Vector& vec)
-{
-  return radix_sort_functor<Vector>(vec);
-}
+#include "time_invocation.hpp"
 
 template<class T>
 double time(size_t n)
 {
+  auto unsorted = random_device_vector<T>(n);
   thrust::device_vector<T> vec(n);
 
-  auto f = make_radix_sort_functor(vec);
-  
-  return time_function(f);
+  auto reset = [&]() mutable
+  {
+    vec = unsorted;
+  };
+
+  auto time_me = [&]
+  {
+    thrust::stable_sort(vec.begin(), vec.end());
+    cudaDeviceSynchronize();
+  };
+
+  size_t us = time_invocation_with_reset_in_microseconds(100, time_me, reset);
+
+  return static_cast<double>(us) / 1000000;
 }
 
 int main(int argc, char** argv)
@@ -57,7 +43,7 @@ int main(int argc, char** argv)
 
   if(type == "int")
   {
-    call_me = time<double>;
+    call_me = time<int>;
   }
   else if(type == "long")
   {
@@ -79,20 +65,11 @@ int main(int argc, char** argv)
   std::clog << "T: " << type << std::endl;
   std::clog << "n: " << n << std::endl;
 
-  double ms = std::numeric_limits<double>::infinity();
+  double seconds = call_me(n);
 
-//  try
-//  {
-    ms = call_me(n);
-//  }
-//  catch(...)
-//  {
-//    std::cout << "bad: " << ms << std::endl;
-//  }
+  std::clog << "s: " << seconds << std::endl;
 
-  std::clog << "ms: " << ms << std::endl;
-
-  std::cout << ms;
+  std::cout << seconds;
 
   return 0;
 }

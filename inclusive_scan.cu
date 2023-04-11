@@ -1,9 +1,6 @@
+#include "time_invocation.hpp"
 #include <thrust/device_vector.h>
 #include <thrust/scan.h>
-#include <thrust/system/cuda/execution_policy.h>
-#include <typeinfo>
-#include "time_invocation_cuda.hpp"
-#include "utility.hpp"
 
 template<class Vector>
 struct inclusive_scan_functor
@@ -31,11 +28,15 @@ inclusive_scan_functor<Vector> make_inclusive_scan_functor(Vector& vec)
 template<class T>
 double time(size_t n)
 {
-  thrust::device_vector<T> vec(n);
+  thrust::device_vector<T> input(n);
+  thrust::device_vector<T> result(n);
 
-  auto f = make_inclusive_scan_functor(vec);
-  
-  return time_function(f);
+  auto us = time_invocation_in_microseconds(100, [&]
+  {
+    thrust::inclusive_scan(input.begin(), input.end(), result.begin());
+  });
+
+  return static_cast<double>(us) / 1000000;
 }
 
 int main(int argc, char** argv)
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
 
   if(type == "int")
   {
-    call_me = time<double>;
+    call_me = time<int>;
   }
   else if(type == "long")
   {
@@ -79,9 +80,9 @@ int main(int argc, char** argv)
   std::clog << "T: " << type << std::endl;
   std::clog << "n: " << n << std::endl;
 
-  auto ms = call_me(n);
+  double seconds = call_me(n);
 
-  std::clog << "ms: " << ms << std::endl;
+  std::clog << "s: " << seconds << std::endl;
 
   std::cout << ms;
 
