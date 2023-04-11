@@ -77,14 +77,9 @@ int main(int argc, char** argv)
     throw std::runtime_error("Unrecognized type");
   }
 
-  std::clog << "T: " << type << std::endl;
-  std::clog << "n: " << n << std::endl;
-
   double seconds = call_me(n);
 
-  std::clog << "s: " << seconds << std::endl;
-
-  std::cout << ms;
+  std::cout << n << ", " << seconds;
 
   return 0;
 }
