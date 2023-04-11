@@ -61,7 +61,7 @@ Duration time_invocation_with_reset_in(const Clock& clock, std::size_t num_trial
     f();
   }
 
-  typename Clock::duration result = 0;
+  typename Clock::duration result(0);
 
   for(std::size_t i = 0; i < num_trials; ++i)
   {
@@ -81,24 +81,24 @@ Duration time_invocation_with_reset_in(const Clock& clock, std::size_t num_trial
 template<class Function1, class Function2>
 std::size_t time_invocation_with_reset_in_nanoseconds(std::size_t num_trials, Function1 f, Function2 reset)
 {
-  return time_invocation_with_reset_in<std::chrono::nanoseconds>(std::chrono::high_resolution_clock(), num_trials, f).count();
+  return time_invocation_with_reset_in<std::chrono::nanoseconds>(std::chrono::high_resolution_clock(), num_trials, f, reset).count();
 }
 
 template<class Function1, class Function2>
 std::size_t time_invocation_with_reset_in_microseconds(std::size_t num_trials, Function1 f, Function2 reset)
 {
-  return time_invocation_with_reset_in<std::chrono::microseconds>(std::chrono::high_resolution_clock(), num_trials, f).count();
+  return time_invocation_with_reset_in<std::chrono::microseconds>(std::chrono::high_resolution_clock(), num_trials, f, reset).count();
 }
 
 template<class Function1, class Function2>
 std::size_t time_invocation_with_reset_in_milliseconds(std::size_t num_trials, Function1 f, Function2 reset)
 {
-  return time_invocation_with_reset_in<std::chrono::milliseconds>(std::chrono::high_resolution_clock(), num_trials, f).count();
+  return time_invocation_with_reset_in<std::chrono::milliseconds>(std::chrono::high_resolution_clock(), num_trials, f, reset).count();
 }
 
 template<class Function1, class Function2>
 std::size_t time_invocation_with_reset_in_seconds(std::size_t num_trials, Function1 f, Function2 reset)
 {
-  return time_invocation_with_reset_in<std::chrono::seconds>(std::chrono::system_clock(), num_trials, f).count();
+  return time_invocation_with_reset_in<std::chrono::seconds>(std::chrono::system_clock(), num_trials, f, reset).count();
 }
 
