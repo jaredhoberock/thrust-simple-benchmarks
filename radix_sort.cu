@@ -1,5 +1,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
+#include "random_device_vector.hpp"
 #include "time_invocation.hpp"
 
 template<class T>
