@@ -23,9 +23,9 @@ double time(size_t n)
   thrust::device_vector<T> vec2(n);
   thrust::device_vector<T> vec3(n);
 
-  auto us = time_invocation_in_microseconds(100, [&]
+  size_t us = time_invocation_in_microseconds(100, [&]
   {
-    thrust::transform(vec1.begin(), vec1.end(), vec2.begin(), vec3.begin(), saxpy_functor<T>(13));
+    thrust::transform(vec1.begin(), vec1.end(), vec2.begin(), vec3.begin(), saxpy_functor<T>{13});
 
     cudaDeviceSynchronize();
   });
